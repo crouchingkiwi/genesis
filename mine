@@ -1,0 +1,32 @@
+os.loadAPI("TurtleAPI")
+t=TurtleAPI
+
+width,length,depth=...
+width,length,depth=tonumber(width)-1,tonumber(length),tonumber(depth)
+print(width,type(width))
+for i=1,depth do
+	t.right(1)
+	print("level")
+	for j=1,length do
+		print("row")
+		for k=1,width do
+			t.dig()
+			t.forward()
+		end
+		if i==depth and j==length then
+			t.goTo(0,0,0)
+		elseif j==length then
+			t.goTo(0,0,-i)
+		elseif j%2==0 then
+			t.right(1)
+			t.dig()
+			t.forward()
+			t.right(1)
+		else
+			t.left(1)
+			t.dig()
+			t.forward()
+			t.left(1)
+		end
+	end
+end

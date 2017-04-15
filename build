@@ -1,0 +1,20 @@
+t=turtle
+i=2
+
+while t.suck() do
+    x=t.getItemDetail()
+    if x["name"] == "minecraft:stick" then
+		t.transferTo(i)
+		i=i+1
+	else
+		t.turnLeft()
+		t.drop()
+		t.turnRight()
+	end
+end
+t.turnLeft()
+while t.suck() do
+	t.turnRight()
+	t.drop()
+	t.turnLeft()
+end

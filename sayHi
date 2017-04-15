@@ -1,0 +1,10 @@
+os.loadAPI("TurtleAPI")
+t=turtle
+i=0
+os.sleep(tonumber(...))
+for j=1,20 do
+    while not t.forward() and i<10 do
+        t.up()
+        i=i+1
+    end
+end

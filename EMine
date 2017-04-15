@@ -1,0 +1,98 @@
+os.loadAPI("TurtleAPI")
+t=TurtleAPI
+
+function isValuable(checkItem)
+	l={ "minecraft:lapis_ore",
+		"minecraft:sand",
+		"minecraft:redstone_ore",
+		"minecraft:iron_ore",
+		"minecraft:gold_ore",
+		"minecraft:emerald_ore",
+		"minecraft:coal_ore",
+		"minecraft:diamond_ore",
+		"minecraft:diamond",
+		"minecraft:redstone",
+		"minecraft:emerald",
+		"minecraft:dye",
+		"minecraft:coal"}
+		
+	for index,compareItem in pairs(l) do
+		if checkItem==compareItem then
+			return true
+		end
+	end
+	return false
+end
+
+function digCheck(n)
+	b=n()
+	if turtle.getItemCount(16)>0 then
+		if not cleanHouse() then
+			offLoad(home)
+		end
+	end
+	return b
+end
+
+function cleanHouse()
+	for i=1,16 do
+		turtle.select(i)
+		x=turtle.getItemDetail()
+		if type(x)=="table" then
+			if not isValuable(x.name) then
+				turtle.drop()
+			end
+		end
+	end
+	i=1
+	while not turtle.transferTo(i) and i<15 do
+		i=i+1
+	end
+	turtle.select(1)
+	if turtle.getItemCount(16)>0 then
+		return false
+	end
+	return true
+end
+
+function offLoad(n)
+	pos=t.getPos()
+	print(type(pos),type(n))
+	t.goTo(n)
+	for i=1,16 do
+		turtle.select(i)
+		turtle.dropUp()
+	end
+	t.goTo(pos)
+end
+
+--MAIN--
+l={0,3,1,2}
+offset=t.getPos()
+k=(t.getDir()%2)+1
+offset=l[offset[k]%4+1]
+turtle.select(1)
+turtle.placeUp()
+home=t.getPos()
+t.forward(l[offset])
+for j=1,tonumber(...) do
+	while digCheck(t.digDown) do
+		t.down(1)
+		for i=1,4 do
+			if isValuable(select(2,turtle.inspect()).name) then
+				digCheck(turtle.dig)
+			end
+			t.right(1)
+		end
+	end
+	pos=t.getPos()
+	t.goTo({pos[1],pos[2],0})
+	for k=1,5 do
+		tries=0
+		t.dig()
+		while not t.forward() and tries<20 do
+			tries=tries+1
+		end
+	end
+end
+t.goTo(home)

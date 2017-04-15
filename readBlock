@@ -1,0 +1,5 @@
+f=io.open("BlockWhitelist","a")
+x=turtle.getItemDetail()
+print(x.name)
+f:write(x.name)
+f:close()

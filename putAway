@@ -1,0 +1,27 @@
+os.loadAPI("TurtleAPI")
+local t=TurtleAPI
+--ItemName, Stock, Pos
+local itemIndex={}
+
+function store(n,x)
+	if itemIndex[n]~=nil then
+		goTo(itemIndex[n][3])
+	end
+end
+
+function fetch(n,x)
+	if itemIndex[n]~=nil then 
+		if itemIndex[n][2]>=x then
+			goTo(itemIndex[n][3])
+			for i=1,#itemIndex[n][1]
+				t.up()
+			end
+		end
+	end
+
+end
+
+function smelt()
+	
+
+end

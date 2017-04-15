@@ -1,0 +1,7 @@
+os.loadAPI("TurtleAPI")
+t=TurtleAPI
+
+
+t.goTo(20,20,3)
+x=t.getPos()
+print(x[1],x[2],x[3])
