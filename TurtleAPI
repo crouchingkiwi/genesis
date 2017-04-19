@@ -1,11 +1,26 @@
-local direction = 0
+
+local currentDirection = 0
+
+------------------------------------------------------------
+-- Map of fatest way to turn to given direction from current
+-- fastFace[current][wanted] = turn n
+-- where n > 0 turnRight and n < 0 turnLeft
+-- example
+-- fastFace[2][0] = Right 2
+-- fastFace[0][1] = Left 1
+-- fastFace[1][1] = 0 - no turn
+ -- calc = w-c-(QUOTIENT(w-c, 3)*4)
+local fastFace = {{  0,  1,  2, -1 }, -- current 0
+                  { -1,  0,  1,  2 }, -- current 1
+                  { -2, -1,  0,  1 }, -- current 2
+                  {  1, -2, -1,  0 }} -- current 3
 
 local x,y,z = 0,0,0
 
 local safe = false
 
 function getDir()
-    return direction
+    return currentDirection
 end
 
 function getPos()
@@ -13,27 +28,27 @@ function getPos()
 end
 
 function goTo(n)
-	print(type(n))
-	for a,i in pairs(n) do
-		print(i,type(i))
-	end
+  print(type(n))
+  for a,i in pairs(n) do
+  print(i,type(i))
+  end
     l={{y,n[2],0,2},{x,n[1],1,3},{z,n[3],up,down}}
     for a,i in pairs(l) do
         if type(i[3])=="number" then
             if i[1]>i[2] then
                 face(i[4])
-				for j=1,i[1]-i[2] do
-					if not dig() then
-						up()
-					end 
-					forward()
-				end
+  for j=1,i[1]-i[2] do
+  if not dig() then
+  up()
+  end
+  forward()
+  end
             else
                 face(i[3])
-				for j=1,i[2]-i[1] do
-					dig()
-					forward()
-				end
+  for j=1,i[2]-i[1] do
+  dig()
+  forward()
+  end
             end
         else
             if i[1]>i[2] then
@@ -67,8 +82,17 @@ function move(x_,y_,z_)
     face(0)
 end
 
-function face(n)
-    right((4-(direction-n))%4)
+function face(wantedDirection)
+    wantedDirection = wantedDirection % 4
+
+    print("currentDirection="..currentDirection..", turning to "..wantedDirection)
+    t = fastFace[currentDirection+1][wantedDirection+1]
+    print("fastFace="..t)
+    if (t < 0) then
+      left(t*-1)
+    elseif (t > 0) then
+      right(t)
+    end
 end
 
 function up(n)
@@ -88,102 +112,102 @@ function down(n)
 end
 
 function forward()
-	if turtle.forward() then
-		channgePos(1)
-		return true
-	end
-	return false
+    if turtle.forward() then
+        updateCurrentPostionBy(1)
+        return true
+    end
+    return false
 end
 
 function back(n)
     for i=1,n do
         turtle.back()
     end
-    channgePos(-n)
+    updateCurrentPostionBy(-n)
 end
 
 function left(n)
     for i=1,n do
         turtle.turnLeft()
     end
-    channgeDir(-n)
+    updateCurrentDirectionBy(-n)
 end
 
 function right(n)
     for i=1,n do
         turtle.turnRight()
     end
-    channgeDir(n)
+    updateCurrentDirectionBy(n)
 end
 
-function channgePos(n)
-    if direction == 0 then
+function updateCurrentDirectionBy(n)
+    currentDirection = (currentDirection+n)%4
+end
+
+function updateCurrentPostionBy(n)
+    if currentDirection == 0 then
         y=y+n
-    elseif direction == 1 then
+    elseif currentDirection == 1 then
         x=x+n
-    elseif direction == 2 then
+    elseif currentDirection == 2 then
         y=y-n
     else
         x=x-n
     end
 end
 
-function channgeDir(n)
-    direction=(direction+n)%4
-end
-
 function dig()
-	if isDigable() then
-		while turtle.detect() do
-			turtle.dig()
-		end
-		return true
-	else 
-		up()
-	end
-	return false
+  if isDigable() then
+  while turtle.detect() do
+  turtle.dig()
+  end
+  return true
+  else
+  up()
+  end
+  return false
 end
 
 function digDown()
-	if isDownDigable() then
-		while turtle.detectDown() do
-			turtle.digDown()
-		end
-		return true
-	end
-	return false
+  if isDownDigable() then
+  while turtle.detectDown() do
+  turtle.digDown()
+  end
+  return true
+  end
+  return false
 end
 
 function digUp()
-	if isUpDigable() then
-		while turtle.detectUp() do
-			turtle.digUp()
-		end
-		return true
-	end
-	return false
+  if isUpDigable() then
+  while turtle.detectUp() do
+  turtle.digUp()
+  end
+  return true
+  end
+  return false
 end
 
 function isDigable()
-	r=select(2,turtle.dig())
-	if r=="Unbreakable block detected" then
-		return false
-	end
-	return true
-end 
+  r=select(2,turtle.dig())
+  if r=="Unbreakable block detected" then
+  return false
+  end
+  return true
+end
 
 function isDownDigable()
-	r=select(2,turtle.digDown())
-	if r=="Unbreakable block detected" then
-		return false
-	end
-	return true
-end 
+  r=select(2,turtle.digDown())
+  if r=="Unbreakable block detected" then
+  return false
+  end
+  return true
+end
 
 function isUpDigable()
-	r=select(2,turtle.digUp())
-	if r=="Unbreakable block detected" then
-		return false
-	end
-	return true
-end 
+  r=select(2,turtle.digUp())
+  if r=="Unbreakable block detected" then
+  return false
+  end
+  return true
+end

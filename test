@@ -2,6 +2,44 @@ os.loadAPI("TurtleAPI")
 t=TurtleAPI
 
 
-t.goTo(20,20,3)
-x=t.getPos()
-print(x[1],x[2],x[3])
+-- Test the direction and tracking functions
+function faceDirectionTest()
+    t.face(0)
+    print("Now facing "..t.getDir())
+    assert(t.getDir() == 0)
+    t.face(1)
+    print("Now facing "..t.getDir())
+    assert(t.getDir() == 1)
+    t.face(2)
+    print("Now facing "..t.getDir())
+    assert(t.getDir() == 2)
+    t.face(3)
+    print("Now facing "..t.getDir())
+    assert(t.getDir() == 3)
+    t.face(4)
+    print("Now facing "..t.getDir())
+    assert(t.getDir() == 0)
+    t.face(2)
+    t.face(0)
+    print("Now facing "..t.getDir())
+    assert(t.getDir() == 0)
+
+    t.face(1)
+    t.face(3)
+    print("Now facing "..t.getDir())
+    assert(t.getDir() == 3)
+
+    t.face(0)
+    print("Now facing "..t.getDir())
+    assert(t.getDir() == 0)
+end
+
+-- Test the movement and tracking functions
+function moveTest()
+end
+
+-------------------------------------------------------
+-- MAIN
+
+directionTest()
+moveTest()
