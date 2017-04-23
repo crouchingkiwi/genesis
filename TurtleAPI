@@ -85,9 +85,9 @@ end
 function face(wantedDirection)
     wantedDirection = wantedDirection % 4
 
-    print("currentDirection="..currentDirection..", turning to "..wantedDirection)
+    --print("currentDirection="..currentDirection..", turning to "..wantedDirection)
     t = fastFace[currentDirection+1][wantedDirection+1]
-    print("fastFace="..t)
+    --print("fastFace="..t)
     if (t < 0) then
       left(t*-1)
     elseif (t > 0) then
