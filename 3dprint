@@ -1,0 +1,347 @@
+-- 3dprint
+--
+
+os.loadAPI("TurtleAPI")
+t=TurtleAPI
+
+-- block code used to fill foundation if requested
+local BLOCK_FOUNDATION = 99
+local FOUNDATION_NONE = 0
+local FOUNDATION_NON_AIR = 1
+local FOUNDATION_FULL = 2
+
+
+local hugContour = true
+local fillFoundation = FOUNDATION_NON_AIR
+
+local startDirection = 0 -- Used to offset from initial
+
+
+local blocks   = { [1] = "minecraft:cobblestone",
+                   [2] = "minecraft:planks",
+                   [3] = "minecraft:torch",
+                   [99] = "minecraft:cobblestone"  -- foundation
+                 }
+
+local pattern  = {
+                  {{ 0, 0, 0, 3, 0, 0, 0, 0, 3 },
+                   { 0, 0, 0, 1, 0, 0, 0, 0, 1 },
+                   { 0, 0, 0, 1, 2, 2, 2, 2, 1 },
+                   { 0, 0, 0, 0, 1, 1, 1, 1, 0 },
+                   { 0, 0, 0, 0, 1, 3, 0, 1, 0 },
+                   { 0, 0, 0, 0, 1, 0, 0, 1, 0 }}, -- ground
+
+                  {{ 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+                   { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+                   { 0, 0, 0, 1, 2, 2, 2, 2, 1 },
+                   { 0, 0, 0, 0, 1, 1, 1, 1, 0 },
+                   { 0, 0, 0, 0, 1, 0, 0, 1, 0 },
+                   { 0, 0, 0, 0, 1, 0, 0, 1, 0 }}, -- ground
+
+                  {{ 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+                   { 0, 0, 0, 1, 0, 0, 0, 0, 1 },
+                   { 0, 0, 0, 1, 2, 2, 2, 2, 1 },
+                   { 0, 0, 0, 0, 1, 1, 1, 1, 0 },
+                   { 0, 0, 0, 0, 1, 0, 0, 1, 0 },
+                   { 0, 0, 0, 0, 1, 0, 0, 1, 0 }}, -- ground
+
+                   {{ 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+                    { 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+                    { 0, 0, 0, 1, 2, 2, 2, 2, 1 },
+                    { 0, 0, 0, 0, 1, 1, 1, 1, 0 },
+                    { 0, 0, 0, 0, 1, 0, 0, 1, 0 },
+                    { 0, 0, 0, 0, 1, 0, 0, 1, 0 }}, -- ground
+                  }
+
+
+-- Maps a block to an inventory slot
+local blockMap = {}
+
+--
+-- Prints a horizontal pattern made of slices n times
+--
+function extrude(repeats)
+
+  startDirection = t.getDir() -- Used to offset from initial
+
+  mapBlocks()
+  for n=1,repeats do
+      print("Extrude "..n.." of "..repeats)
+
+      local depth = table.getn(pattern)
+      for d = 1, depth do
+        print("Building slice "..d.." of "..depth)
+
+        relativeFace(1) -- right
+
+        buildFoundation(pattern, d, fillFoundation)
+
+        -- Reverse direction
+        relativeAboutFace() -- face opposite
+
+
+
+        local height = table.getn(pattern[d])
+        local width = table.getn(pattern[d][1])
+        for hpos = 1, height do
+          local h = height - hpos + 1 -- reverse height direction
+
+          -- build layer
+          if turtle.detectUp() then
+            turtle.digUp()
+          end
+          turtle.up()
+
+          local mustBuildLayer = false
+
+          for w = 1, width do
+            if getPatternBlockIndex(pattern, d, h, w) ~= 0 then
+              mustBuildLayer = true
+            end
+          end
+
+          if mustBuildLayer then
+            for w = 1, width do
+
+              local blockIndex = getPatternBlockIndex(pattern, d, h, w)
+
+              if blockIndex ~= 0 then
+                selectBlock(blockIndex)
+                turtle.placeDown()
+              end
+
+              if w < width then
+                if turtle.detect() then
+                  turtle.dig()
+                end
+                turtle.forward()
+              end
+            end
+
+            -- Reverse direction
+            relativeAboutFace() -- face opposite
+          end
+        end
+
+        -- At wrong end
+        if getRelativeDirection() == 3 then
+          relativeFace(3) -- face left
+          for w = 1, width -1 do
+            turtle.forward()
+          end
+        end
+
+        relativeFace(2) -- face south
+        if turtle.detect() then
+          turtle.dig()
+        end
+        turtle.forward()
+
+        -- Back down to ground
+        for h = 1, height do
+          -- dig down to
+          if h < height then
+            if turtle.detectDown() then
+              turtle.digDown()
+            end
+            turtle.down()
+          else
+            if hugContour then
+              print("check contour")
+              if detectAirDown() then
+                print("Not at ground yet, down 1 more")
+                if turtle.detectDown() then
+                  turtle.digDown()
+                end
+                turtle.down()
+              else
+                  print("hugging contour, stayed up 1")
+              end
+            else
+              turtle.down()
+            end
+          end
+        end
+
+        -- Go down 1 further of nothing below
+        if hugContour then
+          -- Test for grass
+          if detectAirDown() then
+            print("hugging contour, down 1")
+            if turtle.detectDown() then
+              turtle.digDown()
+            end
+            turtle.down()
+          end
+        end
+      end
+
+  end
+
+  relativeFace(0) -- face forward again
+  print("Extrusion complete")
+
+end
+
+--
+-- Get/Set direction relative to turtles initial startDirection
+--
+function getRelativeDirection()
+  return (t.getDir() - startDirection) % 4
+end
+
+function relativeFace(n)
+  assert(n ~= nil, "relativeFace requires a number")
+  return t.face(startDirection + n)
+end
+
+function relativeAboutFace()
+  relativeFace(getRelativeDirection() + 2)
+end
+
+--
+-- Inpect below
+--
+function detectAirDown()
+
+  -- Test for grass
+  local success, item = turtle.inspectDown()
+  itemName = item.name or "air"
+  print("Detected "..itemName.." below")
+  if string.match(itemName, "air") or
+     string.match(itemName, "tallgrass") or
+     string.match(itemName, "double_plant") or
+     string.match(itemName, "leaves")
+  then
+    return true
+  end
+
+  return false
+end
+
+
+
+--
+-- Get the current block type from pattern
+--
+function getPatternBlockIndex(pattern, d, h, w)
+  if getRelativeDirection() == 1 then
+    return pattern[d][h][w]
+  else
+    local width = table.getn(pattern[d][h])
+    return pattern[d][h][width - w + 1]
+  end
+end
+
+--
+-- Fill any holes underneath the structure we are building
+--
+function buildFoundation(pattern, d, fillFoundation)
+
+  local h = table.getn(pattern[d])
+  local width = table.getn(pattern[d][h])
+
+  -- build foundation if required
+  for w = 1, width do
+
+    if fillFoundation ~= FOUNDATION_NONE then
+
+      local blockIndex = 0
+      if fillFoundation == FOUNDATION_NON_AIR then
+        blockIndex = getPatternBlockIndex(pattern, d, h, w)
+      else
+        blockIndex = BLOCK_FOUNDATION
+      end
+
+      if blockIndex ~= 0 then
+
+        local fillHeight = 0
+        while detectAirDown() do
+          fillHeight = fillHeight + 1
+          if turtle.detectDown() then
+            turtle.digDown()
+          end
+          turtle.down()
+        end
+
+        for i = 1,fillHeight do
+          selectBlock(BLOCK_FOUNDATION)
+          turtle.up()
+          turtle.placeDown()
+        end
+      end
+    end
+
+    if w < width then
+      if turtle.detect() then
+        turtle.dig()
+      end
+      turtle.forward()
+    end
+  end
+
+end
+
+
+--
+-- Finds the ingredients in the inventory area
+-- and create a map to its location
+--
+function mapBlocks()
+  for i,v in pairs(blocks) do
+    local blockName = v or "nil"
+    assert(blockName ~= "nil", "Missing blockname for blockIndex="..i)
+
+    local inventoryPos = locateBlockInInventory(blockName)
+    blockMap[i] = inventoryPos
+  end
+
+end
+
+--
+-- Finds the requested block in turtle invetory
+--
+function locateBlockInInventory(blockName)
+
+  print("Searching for "..blockName)
+  while 1 do
+    for s = 1,16 do
+      turtle.select(s)
+      local item = turtle.getItemDetail()
+      if item ~= nil then
+        --print("box "..s.." contains "..item.name)
+        if item.name == blockName then
+          print("box "..s.." contains "..item.name)
+          return s
+        end
+      else
+        --print("box "..s.." is empty")
+      end
+    end
+
+    print("Please add "..blockName.." items to turtle")
+    print("Press enter to coninue ..")
+    io.read()
+  end
+end
+
+--
+--
+--
+function selectBlock(blockIndex)
+
+  local inventoryPos = blockMap[blockIndex]
+  --print("blockIndex="..blockIndex.." maps to inventoryPos=" ..inventoryPos)
+  turtle.select(inventoryPos)
+  if turtle.getItemCount() == 0 then
+      inventoryPos = locateBlockInInventory(blocks[blockIndex])
+      blockMap[blockIndex] = inventoryPos
+  end
+
+  return inventoryPos
+end
+
+-------------------------------------------------
+-- MAIN
+
+extrude(10)

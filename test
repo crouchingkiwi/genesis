@@ -41,5 +41,5 @@ end
 -------------------------------------------------------
 -- MAIN
 
-directionTest()
+faceDirectionTest()
 moveTest()
