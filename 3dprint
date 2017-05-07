@@ -1,8 +1,17 @@
 -- 3dprint
 --
 
-os.loadAPI("TurtleAPI")
-t=TurtleAPI
+assert(os.loadAPI("LogAPI"), "LogAPI failed to load")
+assert(os.loadAPI("TurtleAPI"), "TurtleAPI failed to load")
+
+log = LogAPI.logger
+log.usecolor = false
+log.level = "info"
+log.outfile = "turtle.log"
+log.outfileLevel = "debug"
+t = TurtleAPI
+
+
 
 -- block code used to fill foundation if requested
 local BLOCK_FOUNDATION = 99
@@ -66,11 +75,11 @@ function extrude(repeats)
 
   mapBlocks()
   for n=1,repeats do
-      print("Extrude "..n.." of "..repeats)
+      log.info("Extrude "..n.." of "..repeats)
 
       local depth = table.getn(pattern)
       for d = 1, depth do
-        print("Building slice "..d.." of "..depth)
+        log.debug("Building slice "..d.." of "..depth)
 
         relativeFace(1) -- right
 
@@ -147,15 +156,15 @@ function extrude(repeats)
             turtle.down()
           else
             if hugContour then
-              print("check contour")
+              log.debug("check contour")
               if detectAirDown() then
-                print("Not at ground yet, down 1 more")
+                log.debug("Not at ground yet, down 1 more")
                 if turtle.detectDown() then
                   turtle.digDown()
                 end
                 turtle.down()
               else
-                  print("hugging contour, stayed up 1")
+                  log.debug("hugging contour, stayed up 1")
               end
             else
               turtle.down()
@@ -167,7 +176,7 @@ function extrude(repeats)
         if hugContour then
           -- Test for grass
           if detectAirDown() then
-            print("hugging contour, down 1")
+            log.debug("hugging contour, down 1")
             if turtle.detectDown() then
               turtle.digDown()
             end
@@ -179,7 +188,7 @@ function extrude(repeats)
   end
 
   relativeFace(0) -- face forward again
-  print("Extrusion complete")
+  log.info("Extrusion complete")
 
 end
 
@@ -207,7 +216,7 @@ function detectAirDown()
   -- Test for grass
   local success, item = turtle.inspectDown()
   itemName = item.name or "air"
-  print("Detected "..itemName.." below")
+  log.debug("Detected "..itemName.." below")
   if string.match(itemName, "air") or
      string.match(itemName, "tallgrass") or
      string.match(itemName, "double_plant") or
@@ -303,22 +312,22 @@ end
 --
 function locateBlockInInventory(blockName)
 
-  print("Searching for "..blockName)
+  log.debug("Searching for "..blockName)
   while 1 do
     for s = 1,16 do
       turtle.select(s)
       local item = turtle.getItemDetail()
       if item ~= nil then
-        --print("box "..s.." contains "..item.name)
+        log.debug("box "..s.." contains "..item.name)
         if item.name == blockName then
-          print("box "..s.." contains "..item.name)
+          log.debug("box "..s.." contains "..item.name)
           return s
         end
       else
-        --print("box "..s.." is empty")
+        log.debug("box "..s.." is empty")
       end
     end
-
+    log.debug("Requesting blocks from user")
     print("Please add "..blockName.." items to turtle")
     print("Press enter to coninue ..")
     io.read()
@@ -331,7 +340,7 @@ end
 function selectBlock(blockIndex)
 
   local inventoryPos = blockMap[blockIndex]
-  --print("blockIndex="..blockIndex.." maps to inventoryPos=" ..inventoryPos)
+  log.trace("blockIndex="..blockIndex.." maps to inventoryPos=" ..inventoryPos)
   turtle.select(inventoryPos)
   if turtle.getItemCount() == 0 then
       inventoryPos = locateBlockInInventory(blocks[blockIndex])

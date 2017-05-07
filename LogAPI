@@ -1,0 +1,131 @@
+--
+-- log.lua
+--
+-- Copyright (c) 2016 rxi
+--
+-- This library is free software; you can redistribute it and/or modify it
+-- under the terms of the MIT license. See LICENSE for details.
+--
+-- see https://github.com/rxi/log.lua for usage
+
+logger = { _version = "CC-0.1.1" }
+
+logger.usecolor = true
+logger.level = "trace"
+logger.outfile = nil
+logger.outfileLevel = "trace"
+
+
+local modes = {
+  { name = "trace", color = "\27[34m", },
+  { name = "debug", color = "\27[36m", },
+  { name = "info",  color = "\27[32m", },
+  { name = "warn",  color = "\27[33m", },
+  { name = "error", color = "\27[31m", },
+  { name = "fatal", color = "\27[35m", },
+}
+
+
+local levels = {}
+for i, v in ipairs(modes) do
+  levels[v.name] = i
+end
+
+
+local round = function(x, increment)
+  increment = increment or 1
+  x = x / increment
+  return (x > 0 and math.floor(x + .5) or math.ceil(x - .5)) * increment
+end
+
+
+local _tostring = tostring
+
+local tostring = function(...)
+  local t = {}
+  for i = 1, select('#', ...) do
+    local x = select(i, ...)
+    if type(x) == "number" then
+      x = round(x, .01)
+    end
+    t[#t + 1] = _tostring(x)
+  end
+  return table.concat(t, " ")
+end
+
+local pad = function(sText, iLen, sChar)
+  sChar = sChar or " "
+  local iTextLen = string.len(sText)
+  -- Too short, pad
+  if iTextLen < iLen then
+        local iDiff = iLen - iTextLen
+        return(sText..string.rep(sChar, iDiff))
+  end
+
+  -- Exact length
+  return(sText)
+end
+
+local leftPad = function(sText, iLen, sChar)
+  sChar = sChar or " "
+  local iTextLen = string.len(sText)
+
+  -- Too short, pad
+  if iTextLen < iLen then
+        local iDiff = iLen - iTextLen
+        return(string.rep(sChar, iDiff)..sText)
+  end
+
+  -- Exact length
+  return(sText)
+end
+
+for i, x in ipairs(modes) do
+  local nameupper = x.name:upper()
+
+  logger[x.name] = function(...)
+    local msg = tostring(...)
+
+    -- if we're not below the log level
+    if levels[logger.level] <= i then
+    --    local info = debug.getinfo(2, "Sl")
+    --    local lineinfo = info.short_src .. ":" .. info.currentline
+
+      -- Output to console
+      print(string.format("%s[%s]%s %s",
+                          logger.usecolor and x.color or "",
+                          pad(nameupper, 5),
+                          logger.usecolor and "\27[0m" or "",
+                          msg))
+      -- print(string.format("%s[%-6s%s]%s %s: %s",
+      --                     logger.usecolor and x.color or "",
+      --                     nameupper,
+      --                     os.date("%H:%M:%S"),
+      --                     logger.usecolor and "\27[0m" or "",
+      --                     lineinfo,
+      --                     msg))
+    end
+
+    -- if we're not below the outfile log level
+    if levels[logger.outfileLevel] <= i then
+
+      -- Output to log file
+      if logger.outfile then
+        local fp = io.open(logger.outfile, "a")
+        -- local str = string.format("[%-6s%s] %s: %s\n",
+        --                           nameupper,
+        --                           os.date(),
+        --                           lineinfo,
+        --                           msg)
+        local str = string.format("Day %s %s [%s] %s\r\n",
+                                  os.day(),
+                                  leftPad(textutils.formatTime( os.time(), true ), 5, "0"),
+                                  pad(nameupper, 5),
+                                  msg)
+        fp:write(str)
+        fp:close()
+      end
+    end
+  end
+
+end
