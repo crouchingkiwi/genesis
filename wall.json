@@ -1,10 +1,10 @@
 {
-	"blocks": [
-		[1, "minecraft:cobblestone"],
-		[2, "minecraft:planks"],
-		[3, "minecraft:torch"],
-		[99, "minecraft:cobblestone"]
-	],
+	"blocks": {
+		"1" : "minecraft:cobblestone",
+		"2" : "minecraft:planks",
+		"3" : "minecraft:torch",
+		"99" : "minecraft:cobblestone"
+	},
 
 	"pattern": [
 		[

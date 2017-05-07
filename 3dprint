@@ -25,14 +25,16 @@ local fillFoundation = FOUNDATION_NON_AIR
 
 local startDirection = 0 -- Used to offset from initial
 
+local blueprint = {}
 
-local blocks   = { [1] = "minecraft:cobblestone",
-                   [2] = "minecraft:planks",
-                   [3] = "minecraft:torch",
-                   [99] = "minecraft:cobblestone"  -- foundation
+blueprint.legend   = {
+                    ["1"] = "minecraft:cobblestone",
+                    ["2"] = "minecraft:planks",
+                    ["3"] = "minecraft:torch",
+                    ["99"] = "minecraft:cobblestone"  -- foundation
                  }
 
-local pattern  = {
+blueprint.pattern  = {
                   {{ 0, 0, 0, 3, 0, 0, 0, 0, 3 },
                    { 0, 0, 0, 1, 0, 0, 0, 0, 1 },
                    { 0, 0, 0, 1, 2, 2, 2, 2, 1 },
@@ -67,7 +69,7 @@ local pattern  = {
 local blockMap = {}
 
 --
--- Prints a horizontal pattern made of slices n times
+-- Prints a horizontal blueprint.pattern made of slices n times
 --
 function extrude(repeats)
 
@@ -77,34 +79,31 @@ function extrude(repeats)
   for n=1,repeats do
       log.info("Extrude "..n.." of "..repeats)
 
-      local depth = table.getn(pattern)
+      local depth = table.getn(blueprint.pattern)
       for d = 1, depth do
         log.debug("Building slice "..d.." of "..depth)
 
         relativeFace(1) -- right
 
-        buildFoundation(pattern, d, fillFoundation)
+        buildFoundation(blueprint, d, fillFoundation)
 
         -- Reverse direction
         relativeAboutFace() -- face opposite
 
 
 
-        local height = table.getn(pattern[d])
-        local width = table.getn(pattern[d][1])
+        local height = table.getn(blueprint.pattern[d])
+        local width = table.getn(blueprint.pattern[d][1])
         for hpos = 1, height do
           local h = height - hpos + 1 -- reverse height direction
 
           -- build layer
-          if turtle.detectUp() then
-            turtle.digUp()
-          end
-          turtle.up()
+          forceUp()
 
           local mustBuildLayer = false
 
           for w = 1, width do
-            if getPatternBlockIndex(pattern, d, h, w) ~= 0 then
+            if getPatternBlockIndex(blueprint, d, h, w) ~= 0 then
               mustBuildLayer = true
             end
           end
@@ -112,7 +111,7 @@ function extrude(repeats)
           if mustBuildLayer then
             for w = 1, width do
 
-              local blockIndex = getPatternBlockIndex(pattern, d, h, w)
+              local blockIndex = getPatternBlockIndex(blueprint, d, h, w)
 
               if blockIndex ~= 0 then
                 selectBlock(blockIndex)
@@ -120,10 +119,7 @@ function extrude(repeats)
               end
 
               if w < width then
-                if turtle.detect() then
-                  turtle.dig()
-                end
-                turtle.forward()
+                forceForward()
               end
             end
 
@@ -136,53 +132,39 @@ function extrude(repeats)
         if getRelativeDirection() == 3 then
           relativeFace(3) -- face left
           for w = 1, width -1 do
-            turtle.forward()
+            forceForward()
           end
         end
 
         relativeFace(2) -- face south
-        if turtle.detect() then
-          turtle.dig()
-        end
-        turtle.forward()
+        forceForward()
 
         -- Back down to ground
         for h = 1, height do
           -- dig down to
           if h < height then
-            if turtle.detectDown() then
-              turtle.digDown()
-            end
-            turtle.down()
+            forceDown()
           else
             if hugContour then
-              log.debug("check contour")
-              if detectAirDown() then
-                log.debug("Not at ground yet, down 1 more")
-                if turtle.detectDown() then
-                  turtle.digDown()
-                end
-                turtle.down()
-              else
-                  log.debug("hugging contour, stayed up 1")
+              if not turtle.down() then -- if not possible stay up 1
+                  -- check for leaves
+                  if detectDown("leaves") then
+                  end
               end
             else
-              turtle.down()
+              forceDown() -- forceDown to original start
             end
           end
         end
 
-        -- Go down 1 further of nothing below
+        -- Go down 1 further if still nothing below
         if hugContour then
-          -- Test for grass
-          if detectAirDown() then
-            log.debug("hugging contour, down 1")
-            if turtle.detectDown() then
-              turtle.digDown()
-            end
-            turtle.down()
-          end
+          turtle.down()
         end
+
+        -- Throw away any item not required
+        cleanHouse(pattern)
+
       end
 
   end
@@ -190,6 +172,27 @@ function extrude(repeats)
   relativeFace(0) -- face forward again
   log.info("Extrusion complete")
 
+end
+
+function forceForward()
+    while not turtle.forward() do
+      turtle.dig()
+      turtle.attack()
+    end
+end
+
+function forceUp()
+    while not turtle.up() do
+      turtle.digUp()
+      turtle.attackUp()
+    end
+end
+
+function forceDown()
+    while not turtle.down() do
+      turtle.digDown()
+      turtle.attackDown()
+    end
 end
 
 --
@@ -208,47 +211,26 @@ function relativeAboutFace()
   relativeFace(getRelativeDirection() + 2)
 end
 
---
--- Inpect below
---
-function detectAirDown()
-
-  -- Test for grass
-  local success, item = turtle.inspectDown()
-  itemName = item.name or "air"
-  log.debug("Detected "..itemName.." below")
-  if string.match(itemName, "air") or
-     string.match(itemName, "tallgrass") or
-     string.match(itemName, "double_plant") or
-     string.match(itemName, "leaves")
-  then
-    return true
-  end
-
-  return false
-end
-
-
 
 --
--- Get the current block type from pattern
+-- Get the current block type from blueprint.pattern
 --
-function getPatternBlockIndex(pattern, d, h, w)
+function getPatternBlockIndex(blueprint, d, h, w)
   if getRelativeDirection() == 1 then
-    return pattern[d][h][w]
+    return blueprint.pattern[d][h][w]
   else
-    local width = table.getn(pattern[d][h])
-    return pattern[d][h][width - w + 1]
+    local width = table.getn(blueprint.pattern[d][h])
+    return blueprint.pattern[d][h][width - w + 1]
   end
 end
 
 --
 -- Fill any holes underneath the structure we are building
 --
-function buildFoundation(pattern, d, fillFoundation)
+function buildFoundation(blueprint, d, fillFoundation)
 
-  local h = table.getn(pattern[d])
-  local width = table.getn(pattern[d][h])
+  local h = table.getn(blueprint.pattern[d])
+  local width = table.getn(blueprint.pattern[d][h])
 
   -- build foundation if required
   for w = 1, width do
@@ -257,7 +239,7 @@ function buildFoundation(pattern, d, fillFoundation)
 
       local blockIndex = 0
       if fillFoundation == FOUNDATION_NON_AIR then
-        blockIndex = getPatternBlockIndex(pattern, d, h, w)
+        blockIndex = getPatternBlockIndex(blueprint, d, h, w)
       else
         blockIndex = BLOCK_FOUNDATION
       end
@@ -265,12 +247,8 @@ function buildFoundation(pattern, d, fillFoundation)
       if blockIndex ~= 0 then
 
         local fillHeight = 0
-        while detectAirDown() do
+        while turtle.down() do
           fillHeight = fillHeight + 1
-          if turtle.detectDown() then
-            turtle.digDown()
-          end
-          turtle.down()
         end
 
         for i = 1,fillHeight do
@@ -282,10 +260,7 @@ function buildFoundation(pattern, d, fillFoundation)
     end
 
     if w < width then
-      if turtle.detect() then
-        turtle.dig()
-      end
-      turtle.forward()
+      forceForward()
     end
   end
 
@@ -297,10 +272,12 @@ end
 -- and create a map to its location
 --
 function mapBlocks()
-  for i,v in pairs(blocks) do
+    print("Blocks required for pattern : ")
+  for i,v in pairs(blueprint.legend) do
     local blockName = v or "nil"
     assert(blockName ~= "nil", "Missing blockname for blockIndex="..i)
 
+    print(" - "..blockName)
     local inventoryPos = locateBlockInInventory(blockName)
     blockMap[i] = inventoryPos
   end
@@ -318,7 +295,6 @@ function locateBlockInInventory(blockName)
       turtle.select(s)
       local item = turtle.getItemDetail()
       if item ~= nil then
-        log.debug("box "..s.." contains "..item.name)
         if item.name == blockName then
           log.debug("box "..s.." contains "..item.name)
           return s
@@ -337,18 +313,41 @@ end
 --
 --
 --
-function selectBlock(blockIndex)
+function selectBlock(legendBlock)
 
-  local inventoryPos = blockMap[blockIndex]
-  log.trace("blockIndex="..blockIndex.." maps to inventoryPos=" ..inventoryPos)
+  legendBlock = tostring(legendBlock)
+  local inventoryPos = blockMap[legendBlock]
+  log.trace("blockIndex="..legendBlock.." maps to inventoryPos=" ..inventoryPos)
   turtle.select(inventoryPos)
   if turtle.getItemCount() == 0 then
-      inventoryPos = locateBlockInInventory(blocks[blockIndex])
-      blockMap[blockIndex] = inventoryPos
+      inventoryPos = locateBlockInInventory(blueprint.legend[legendBlock])
+      blockMap[legendBlock] = inventoryPos
   end
 
   return inventoryPos
 end
+
+function cleanHouse(pattern)
+
+  for s = 1,16 do
+      turtle.select(s)
+      local item = turtle.getItemDetail()
+      if item ~= nil then
+          local wanted = false
+          for i,v in pairs(blueprint.legend) do
+            local legendBlock = v or "nil"
+            --print("box "..s.." contains "..item.name)
+            if item.name == legendBlock then
+                wanted = true
+            end
+          end
+          if not wanted then
+              turtle.drop()
+          end
+      end
+  end
+end
+
 
 -------------------------------------------------
 -- MAIN
