@@ -1,3 +1,17 @@
+--
+-- TurtleAPI
+--
+
+
+assert(os.loadAPI("LogAPI"), "LogAPI failed to load")
+
+log = LogAPI.logger
+log.usecolor = false
+log.level = "info"
+log.outfile = "turtle.log"
+log.outfileLevel = "debug"
+
+
 
 local currentDirection = 0
 
@@ -15,6 +29,19 @@ local fastFace = {{  0,  1,  2, -1 }, -- current 0
                   { -2, -1,  0,  1 }, -- current 2
                   {  1, -2, -1,  0 }} -- current 3
 
+local directionValues = { ["north"] = 0,
+                          ["east"] = 1,
+                          ["south"] = 2,
+                          ["west"] = 3
+                        }
+
+local directionStrings = { [0] = "north",
+                           [1] = "east",
+                           [2] = "south",
+                           [3] = "west"
+                         }
+
+
 local x,y,z = 0,0,0
 
 local safe = false
@@ -24,7 +51,7 @@ function getDir()
 end
 
 function getPos()
-    return {x,y,z}
+    return { x, y, z}
 end
 
 function goTo(n)
@@ -82,68 +109,9 @@ function move(x_,y_,z_)
     face(0)
 end
 
-function face(wantedDirection)
-    wantedDirection = wantedDirection % 4
-
-    --print("currentDirection="..currentDirection..", turning to "..wantedDirection)
-    t = fastFace[currentDirection+1][wantedDirection+1]
-    --print("fastFace="..t)
-    if (t < 0) then
-      left(t*-1)
-    elseif (t > 0) then
-      right(t)
-    end
-end
-
-function up(n)
-    for i=1,n do
-        while not turtle.up() do
-            digUp()
-        end
-    end
-    z=z+n
-end
-
-function down(n)
-    for i=1,n do
-        turtle.down()
-    end
-    z=z-n
-end
-
-function forward()
-    if turtle.forward() then
-        updateCurrentPostionBy(1)
-        return true
-    end
-    return false
-end
-
-function back(n)
-    for i=1,n do
-        turtle.back()
-    end
-    updateCurrentPostionBy(-n)
-end
-
-function left(n)
-    for i=1,n do
-        turtle.turnLeft()
-    end
-    updateCurrentDirectionBy(-n)
-end
-
-function right(n)
-    for i=1,n do
-        turtle.turnRight()
-    end
-    updateCurrentDirectionBy(n)
-end
-
-function updateCurrentDirectionBy(n)
-    currentDirection = (currentDirection+n)%4
-end
-
+--
+-- MOVEMENT FUNCTIONS
+--
 function updateCurrentPostionBy(n)
     if currentDirection == 0 then
         y=y+n
@@ -154,60 +122,156 @@ function updateCurrentPostionBy(n)
     else
         x=x-n
     end
+    log.trace("Postion "..x..", "..y..", "..z)
 end
 
-function dig()
-  if isDigable() then
-  while turtle.detect() do
-  turtle.dig()
+function updateCurrentHeightBy(n)
+  z = z + n
+end
+
+function forward(n)
+    n = n or 1
+    for i = 1, n do
+      if turtle.forward() then
+          updateCurrentPostionBy(1)
+      else
+          return false
+      end
+    end
+    return true
+end
+
+function back(n)
+  n = n or 1
+  for i = 1, n do
+    if turtle.back() then
+        updateCurrentPostionBy(-1)
+    else
+        return false
+    end
   end
   return true
-  else
-  up()
+end
+
+function up(n)
+  n = n or 1
+  for i = 1, n do
+    if turtle.up() then
+        updateCurrentHeightBy(1)
+    else
+        return false
+    end
   end
-  return false
+  return true
+end
+
+function down(n)
+    n = n or 1
+    for i = 1, n do
+      if turtle.down() then
+          updateCurrentHeightBy(-1)
+      else
+          return false
+      end
+    end
+    return true
+end
+
+
+--
+-- FORCED MOVEMENT FUNCTIONS
+--
+function forceForward()
+    while not forward() do
+      dig()
+      turtle.attack()
+    end
+end
+
+function forceBack()
+    while not back() do
+      face(currentDirection +2)
+      dig()
+      turtle.attack()
+      face(currentDirection +2)
+    end
+end
+
+function forceUp()
+    while not up() do
+      digUp()
+      turtle.attackUp()
+    end
+end
+
+function forceDown()
+    while not down() do
+      digDown()
+      turtle.attackDown()
+    end
+end
+
+--
+-- TURNING FUNCTIONS
+--
+function updateCurrentDirectionBy(n)
+    currentDirection = (currentDirection+n)%4
+    log.trace("Facing "..directionStrings[currentDirection])
+end
+
+function left(n)
+    n = n or 1
+    for i=1,n do
+        turtle.turnLeft()
+    end
+    updateCurrentDirectionBy(-n)
+end
+
+function right(n)
+    n = n or 1
+    for i=1,n do
+        turtle.turnRight()
+    end
+    updateCurrentDirectionBy(n)
+end
+
+function face(wantedDirection)
+    if type(wantedDirection) == "string" then
+      wantedDirection = directionValues[wantedDirection]
+    end
+    wantedDirection = wantedDirection % 4
+
+    log.trace("currentDirection="..currentDirection..", turning to "..wantedDirection)
+    t = fastFace[currentDirection+1][wantedDirection+1]
+    --print("fastFace="..t)
+    if (t < 0) then
+      left(t*-1)
+    elseif (t > 0) then
+      right(t)
+    end
+end
+
+--
+-- DIG FUNCTIONS
+--
+function dig(method)
+  method = method or { fnDig = turtle.dig, fnDetect = turtle.detect }
+  if type(method.fnDetect) ~= "function" then
+    assert("Invalid methods passed to dig() function")
+  end
+  if method.fnDetect() then
+    r = select(2, method.fnDig())
+    if r == "Unbreakable block detected" then
+      return false
+    end
+  end
+  return true
 end
 
 function digDown()
-  if isDownDigable() then
-  while turtle.detectDown() do
-  turtle.digDown()
-  end
-  return true
-  end
-  return false
+  return dig({ fnDig = turtle.digDown, fnDetect = turtle.detectDown })
 end
 
 function digUp()
-  if isUpDigable() then
-  while turtle.detectUp() do
-  turtle.digUp()
-  end
-  return true
-  end
-  return false
-end
-
-function isDigable()
-  r=select(2,turtle.dig())
-  if r=="Unbreakable block detected" then
-  return false
-  end
-  return true
-end
-
-function isDownDigable()
-  r=select(2,turtle.digDown())
-  if r=="Unbreakable block detected" then
-  return false
-  end
-  return true
-end
-
-function isUpDigable()
-  r=select(2,turtle.digUp())
-  if r=="Unbreakable block detected" then
-  return false
-  end
-  return true
+  return dig({ fnDig = turtle.digUp, fnDetect = turtle.detectUp })
 end

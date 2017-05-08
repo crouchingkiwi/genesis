@@ -98,7 +98,7 @@ function extrude(repeats)
           local h = height - hpos + 1 -- reverse height direction
 
           -- build layer
-          forceUp()
+          t.forceUp()
 
           local mustBuildLayer = false
 
@@ -119,7 +119,7 @@ function extrude(repeats)
               end
 
               if w < width then
-                forceForward()
+                t.forceForward()
               end
             end
 
@@ -132,34 +132,35 @@ function extrude(repeats)
         if getRelativeDirection() == 3 then
           relativeFace(3) -- face left
           for w = 1, width -1 do
-            forceForward()
+            t.forceForward()
           end
         end
 
         relativeFace(2) -- face south
-        forceForward()
+        t.forceForward()
 
         -- Back down to ground
         for h = 1, height do
           -- dig down to
           if h < height then
-            forceDown()
+            t.forceDown()
           else
             if hugContour then
-              if not turtle.down() then -- if not possible stay up 1
+              if not t.down() then -- if not possible stay up 1
                   -- check for leaves
-                  if detectDown("leaves") then
+                  if isVegetationDown() then
+                    t.forceDown()
                   end
               end
             else
-              forceDown() -- forceDown to original start
+              t.forceDown() -- forceDown to original start
             end
           end
         end
 
         -- Go down 1 further if still nothing below
         if hugContour then
-          turtle.down()
+          t.down()
         end
 
         -- Throw away any item not required
@@ -172,27 +173,6 @@ function extrude(repeats)
   relativeFace(0) -- face forward again
   log.info("Extrusion complete")
 
-end
-
-function forceForward()
-    while not turtle.forward() do
-      turtle.dig()
-      turtle.attack()
-    end
-end
-
-function forceUp()
-    while not turtle.up() do
-      turtle.digUp()
-      turtle.attackUp()
-    end
-end
-
-function forceDown()
-    while not turtle.down() do
-      turtle.digDown()
-      turtle.attackDown()
-    end
 end
 
 --
@@ -247,20 +227,20 @@ function buildFoundation(blueprint, d, fillFoundation)
       if blockIndex ~= 0 then
 
         local fillHeight = 0
-        while turtle.down() do
+        while t.down() do
           fillHeight = fillHeight + 1
         end
 
         for i = 1,fillHeight do
           selectBlock(BLOCK_FOUNDATION)
-          turtle.up()
+          t.up()
           turtle.placeDown()
         end
       end
     end
 
     if w < width then
-      forceForward()
+      t.forceForward()
     end
   end
 
@@ -278,6 +258,9 @@ function mapBlocks()
     assert(blockName ~= "nil", "Missing blockname for blockIndex="..i)
 
     print(" - "..blockName)
+  end
+  for i,v in pairs(blueprint.legend) do
+    local blockName = v
     local inventoryPos = locateBlockInInventory(blockName)
     blockMap[i] = inventoryPos
   end
@@ -296,15 +279,15 @@ function locateBlockInInventory(blockName)
       local item = turtle.getItemDetail()
       if item ~= nil then
         if item.name == blockName then
-          log.debug("box "..s.." contains "..item.name)
+          log.trace("box "..s.." contains "..item.name)
           return s
         end
       else
-        log.debug("box "..s.." is empty")
+        log.trace("box "..s.." is empty")
       end
     end
-    log.debug("Requesting blocks from user")
-    print("Please add "..blockName.." items to turtle")
+    log.debug("Requesting "..blockName.." from user")
+    print("Please add "..blockName)
     print("Press enter to coninue ..")
     io.read()
   end
@@ -325,6 +308,25 @@ function selectBlock(legendBlock)
   end
 
   return inventoryPos
+end
+
+
+--
+-- Check if block below is vegetation
+--
+function isVegetationDown()
+
+  local success, item = turtle.inspectDown()
+  itemName = item.name or "air"
+  log.debug("Detected "..itemName.." below")
+  if string.match(itemName, "tallgrass") or
+     string.match(itemName, "double_plant") or
+     string.match(itemName, "log") or
+     string.match(itemName, "leaves")
+  then
+    return true
+  end
+
 end
 
 function cleanHouse(pattern)

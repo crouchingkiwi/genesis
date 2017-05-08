@@ -4,6 +4,9 @@ t=TurtleAPI
 
 -- Test the direction and tracking functions
 function faceDirectionTest()
+
+    print("Facing test started")
+
     t.face(0)
     print("Now facing "..t.getDir())
     assert(t.getDir() == 0)
@@ -32,14 +35,128 @@ function faceDirectionTest()
     t.face(0)
     print("Now facing "..t.getDir())
     assert(t.getDir() == 0)
+
+    print("Facing test successful")
+
 end
 
 -- Test the movement and tracking functions
 function moveTest()
+
+  print("Move test started")
+
+  assertPosition("start position", { 0, 0, 0 }, t.getPos())
+
+  t.up()
+  assertPosition("up()", { 0, 0, 1 }, t.getPos())
+  t.down()
+  assertPosition("down()", { 0, 0, 0 }, t.getPos())
+
+  t.forward()
+  assertPosition("forward()", { 0, 1, 0 }, t.getPos())
+  t.back()
+  assertPosition("back()", { 0, 0, 0 }, t.getPos())
+
+  t.face("west")
+  t.forward()
+  assertPosition("forward()", { -1, 0, 0 }, t.getPos())
+  t.back()
+  assertPosition("back()", { 0, 0, 0 }, t.getPos())
+
+  t.face("south")
+  t.forward()
+  assertPosition("forward()", { 0, -1, 0 }, t.getPos())
+  t.back()
+  assertPosition("back()", { 0, 0, 0 }, t.getPos())
+
+  t.face("east")
+  t.forward()
+  assertPosition("forward()", { 1, 0, 0 }, t.getPos())
+  t.back()
+  assertPosition("back()", { 0, 0, 0 }, t.getPos())
+
+  t.face("north")
+
+
+  print("Move test successful")
+
 end
+
+-- Test the force movement and tracking functions
+function forcedMoveTest()
+
+  print("Move test started")
+
+  assertPosition("start position", { 0, 0, 0 }, t.getPos())
+
+  t.forceUp()
+  assertPosition("up()", { 0, 0, 1 }, t.getPos())
+  t.forceDown()
+  assertPosition("down()", { 0, 0, 0 }, t.getPos())
+
+  t.forceForward()
+  assertPosition("forward()", { 0, 1, 0 }, t.getPos())
+  t.forceBack()
+  assertPosition("back()", { 0, 0, 0 }, t.getPos())
+
+  t.face("west")
+  t.forceForward()
+  assertPosition("forward()", { -1, 0, 0 }, t.getPos())
+  t.forceBack()
+  assertPosition("back()", { 0, 0, 0 }, t.getPos())
+
+  t.face("south")
+  t.forceForward()
+  assertPosition("forward()", { 0, -1, 0 }, t.getPos())
+  t.forceBack()
+  assertPosition("back()", { 0, 0, 0 }, t.getPos())
+
+  t.face("east")
+  t.forceForward()
+  assertPosition("forward()", { 1, 0, 0 }, t.getPos())
+  t.forceBack()
+  assertPosition("back()", { 0, 0, 0 }, t.getPos())
+
+  t.face("north")
+
+
+  print("Move test successful")
+
+end
+
+-- Test the dig funcitons
+function digTest()
+
+  print("Dig test started")
+
+  assert(t.dig() == true, "dig() failed")
+  assert(t.digDown() == true, "digDown() failed")
+  assert(t.digUp() == true, "digUp() failed")
+
+  turtle.placeDown()
+
+  print("Dig test successful")
+
+end
+
+function assertPosition(title, expected, actual)
+  local err = ""
+
+  if actual[1] ~= expected[1] then err = "X incorrect" end
+  if actual[2] ~= expected[2] then err = "Y incorrect" end
+  if actual[3] ~= expected[3] then err = "Z incorrect" end
+  assert(err == "", title.." failed \n"..err..",\nexpected "..posToString(expected).."\nactual   "..posToString(actual))
+end
+
+function posToString(pos)
+  return "{"..pos[1]..", "..pos[2]..", "..pos[3].."}"
+end
+
 
 -------------------------------------------------------
 -- MAIN
 
 faceDirectionTest()
 moveTest()
+forcedMoveTest()
+digTest()
